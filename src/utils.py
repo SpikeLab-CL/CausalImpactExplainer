@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 from causalimpact import CausalImpact
 import pandas as pd
-
+import plotly.express as px
 
 class myCausalImpact(CausalImpact):
     def __init__(self, data, pre_period, post_period, model=None, alpha=0.05, **kwargs):
@@ -42,7 +42,7 @@ class myCausalImpact(CausalImpact):
 
         # First points can be noisy due approximation techniques used in the likelihood
         # optimizaion process. We remove those points from the plots.
-        llb = self.trained_model.filter_results.loglikelihood_burn
+        llb = self.trained_model.filter_results.loglikelihood_burn #type: ignore
         inferences = self.inferences.iloc[llb:]
 
         intervention_idx = inferences.index.get_loc(self.post_period[0])
@@ -51,9 +51,10 @@ class myCausalImpact(CausalImpact):
         idx = 1
 
         if 'original' in panels:
-            ax.plot(pd.concat([self.pre_data.iloc[llb:, 0], self.post_data.iloc[:, 0]]),
-                    'k', label='y')
-            ax.plot(inferences['preds'], 'b--', label='Predicted')
+            ax.plot(pd.concat([self.pre_data.iloc[llb:, 0], self.post_data.iloc[:, 0]]),  # type: ignore
+                    'k', label='y') 
+            ax.plot(inferences['preds'], 'b--',
+                    label='Predicted')  # type: ignore
             ax.axvline(
                 inferences.index[intervention_idx - 1], c='k', linestyle='--')
             ax.fill_between(
@@ -87,7 +88,7 @@ class myCausalImpact(CausalImpact):
             ax.grid(True, linestyle='--')
             ax.legend()
             if idx != n_panels:
-                plt.setp(ax.get_xticklabels(), visible=False)
+                plt.setp(ax.get_xticklabels(), visible=False)  # type: ignore
             idx += 1
 
         if 'cumulative' in panels:
@@ -104,14 +105,27 @@ class myCausalImpact(CausalImpact):
                 interpolate=True,
                 alpha=0.25
             )
-            ax.grid(True, linestyle='--')
-            ax.axhline(y=0, color='k', linestyle='--')
-            ax.legend()
+            ax.grid(True, linestyle='--')  # type: ignore
+            ax.axhline(y=0, color='k', linestyle='--')  # type: ignore
+            ax.legend()  # type: ignore
 
         # Alert if points were removed due to loglikelihood burning data
         if llb > 0:
             text = ('Note: The first {} observations were removed due to approximate '
                     'diffuse initialization.'.format(llb))
-            fig.text(0.1, 0.01, text, fontsize='large')
+            fig.text(0.1, 0.01, text, fontsize='large')  # type: ignore
 
-        return fig, fig.axes
+        return fig, fig.axes  # type: ignore
+
+
+def plotly_time_series(df, time_var, plot_var):
+    fig = px.line(df.sort_values(by=time_var),
+                  x=time_var,
+                  y=plot_var)
+
+    fig.update_layout(height=200,
+                      width=800,
+                      xaxis_title="Time",
+                      yaxis_title=plot_var)
+
+    return fig
