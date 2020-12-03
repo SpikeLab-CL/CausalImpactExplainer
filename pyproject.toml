@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "causalimpactexplainer"
+version = "0.1.0"
+description = "Visualizations and Explanations for the Causal Impact package"
+authors = ["cd <cdagnino@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+pycausalimpact = "^0.1.1"
+streamlit = "^0.72.0"
+pandas = "^1.1.4"
+
+[tool.poetry.dev-dependencies]
+jupyterlab = "^2.2.9"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
