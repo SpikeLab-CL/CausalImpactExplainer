@@ -2,6 +2,8 @@ import matplotlib.pyplot as plt
 from causalimpact import CausalImpact
 import pandas as pd
 import plotly.express as px
+import numpy as np
+from typing import List
 
 class myCausalImpact(CausalImpact):
     def __init__(self, data, pre_period, post_period, model=None, alpha=0.05, **kwargs):
@@ -129,3 +131,46 @@ def plotly_time_series(df, time_var, plot_var):
                       yaxis_title=plot_var)
 
     return fig
+
+
+def estimate_model(df: pd.DataFrame, y_var_name: str, x_vars: List,
+                 beg_pre_period, end_pre_period, beg_eval_period,
+                   end_eval_period) -> myCausalImpact:
+    pre_period = [beg_pre_period, end_pre_period]
+    eval_period = [beg_eval_period, end_eval_period]
+    selected_x_vars_plus_target = [y_var_name] + x_vars
+    ci = myCausalImpact(
+        df[selected_x_vars_plus_target], pre_period, eval_period)
+    return ci
+
+
+def get_n_most_important_vars(trained_c_impact: myCausalImpact, top_n: int):
+    """
+    Get the names of the n most important variables in the training of the causal impact
+    model.
+    Most important is given by the absolute value of the coefficient
+    (I THINK that data is standardized beforehand so scale of X shouldn't matter)
+    """
+    params: pd.Series = trained_c_impact.trained_model.params #type: ignore
+    contains_beta = params.index.str.contains("beta")
+    does_not_contain_t = params.index != "beta.t"
+    params = params[contains_beta & does_not_contain_t]
+    params = np.abs(params)
+
+    top_n_vars = params.sort_values(ascending=False).index.values[:top_n]
+
+    top_n_vars = [var.split(".")[1] for var in top_n_vars]
+    return top_n_vars
+
+
+def plot_top_n_relevant_vars(df, time_var, y_and_top_vars: List[str],
+                            beg_eval_period):
+    n_total_vars = len(y_and_top_vars)
+    fig, axes = plt.subplots(n_total_vars, 1,
+                             figsize=(6, 1.5*n_total_vars))
+    for ax, var_name in zip(axes, y_and_top_vars):  # type: ignore
+        ax.plot(df[time_var], df[var_name])
+        ax.set_title(var_name)
+        ax.axvline(beg_eval_period, c='k', linestyle='--')
+
+    return fig, axes

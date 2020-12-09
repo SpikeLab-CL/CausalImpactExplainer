@@ -3,8 +3,10 @@ import pandas as pd
 from statsmodels.tsa.arima_process import ArmaProcess
 import numpy as np
 import streamlit as st
-from utils import myCausalImpact
-from utils import plotly_time_series
+import matplotlib.pyplot as plt
+#from utils import plotly_time_series, get_n_most_important_vars
+from utils import (plotly_time_series, estimate_model,
+                   get_n_most_important_vars, plot_top_n_relevant_vars)
 
 np.random.seed(12345)
 
@@ -26,18 +28,16 @@ def generate_data() -> pd.DataFrame:
 
     return data
 
+#Names of important variables
+time_var = "t"
+y_var = "y"
+
 example_data = generate_data() #type: ignore
-
-
-
-
-
 
 vars_to_plot = st.multiselect("Variables to plot",
                  list(example_data.columns),
                default=example_data.columns[0])
 
-time_var = "t"
 for plot_var in vars_to_plot:
     fig = plotly_time_series(example_data, time_var, plot_var)
     st.plotly_chart(fig)
@@ -58,14 +58,6 @@ st.sidebar.markdown("### Select variables")
 x_vars = [col for col in example_data.columns if col != 'y']
 selected_x_vars = st.sidebar.multiselect("Variable list", x_vars,
                        default=x_vars)
-#@st.cache
-def estimate_model(df):
-    pre_period = [beg_pre_period, end_pre_period]
-    eval_period = [beg_eval_period, end_eval_period]
-    selected_x_vars_plus_target = ['y'] + selected_x_vars
-    ci = myCausalImpact(
-        df[selected_x_vars_plus_target], pre_period, eval_period)
-    return ci
 
 
 
@@ -74,11 +66,24 @@ def main():
     if st.checkbox('Show dataframe'):
         st.write(example_data.head(5))
     
-
     if st.checkbox('Estimate Causal Impact model'):
-        ci = estimate_model(example_data)
-        fig, axes = ci.plot()
+        ci = estimate_model(example_data, y_var,
+                            selected_x_vars,
+                            beg_pre_period, end_pre_period, beg_eval_period,
+                            end_eval_period)
+        fig, _ = ci.plot()
         st.pyplot(fig)
         st.text(ci.summary())
+
+        #st.text(ci.summary('report'))
+
+        st.markdown("### Most important variables (according to coefficients)")
+
+        top_n_vars = get_n_most_important_vars(ci, 1)
+
+        y_and_top_vars = [y_var] + top_n_vars
+        fig, _ = plot_top_n_relevant_vars(example_data, time_var, y_and_top_vars,
+                                          beg_eval_period)
+        st.pyplot(fig)
 
 main()
