@@ -4,6 +4,7 @@ import pandas as pd
 import plotly.express as px
 import numpy as np
 from typing import List
+import streamlit as st
 
 class myCausalImpact(CausalImpact):
     def __init__(self, data, pre_period, post_period, model=None, alpha=0.05, **kwargs):
@@ -132,10 +133,12 @@ def plotly_time_series(df, time_var, plot_var):
 
     return fig
 
-
+#Not sure if this speeds up anything
+@st.cache(hash_funcs={myCausalImpact: id})
 def estimate_model(df: pd.DataFrame, y_var_name: str, x_vars: List,
                  beg_pre_period, end_pre_period, beg_eval_period,
                    end_eval_period) -> myCausalImpact:
+    st.write("caching didn't work")
     pre_period = [beg_pre_period, end_pre_period]
     eval_period = [beg_eval_period, end_eval_period]
     selected_x_vars_plus_target = [y_var_name] + x_vars
