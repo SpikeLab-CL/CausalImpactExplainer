@@ -4,6 +4,7 @@ from statsmodels.tsa.arima_process import ArmaProcess
 import numpy as np
 import streamlit as st
 import matplotlib.pyplot as plt
+import pickle
 #from utils import plotly_time_series, get_n_most_important_vars
 from utils import (plotly_time_series, estimate_model,
                    get_n_most_important_vars, plot_top_n_relevant_vars)
@@ -13,38 +14,47 @@ np.random.seed(12345)
 st.title("Causal Impact explainer")
 
 @st.cache
-def generate_data() -> pd.DataFrame:
-    n = 100
-    ar = np.r_[1, 0.9]
-    ma = np.array([1])
-    arma_process = ArmaProcess(ar, ma)
-    x1 = 100 + arma_process.generate_sample(nsample=n)
-    x2 = 115 + arma_process.generate_sample(nsample=n)
-    y = 1.2 * x1 -0.3*x2 + np.random.normal(size=n)
-    t = range(1, n + 1)
-    y[70:] += 5
+def load_example_data() -> dict:
+    with open("example_data/tablitas.pickle", 'rb') as file:
+        data_dict = pickle.load(file)
+    for key, df in data_dict.items():
+        data_dict[key] = df.sort_values(by="date").loc[1::, :]
+    return data_dict
 
-    data = pd.DataFrame({'y': y, 'x1': x1, 'x2': x2, 't': t})
+data_dict = load_example_data()
+dataframe_names = list(data_dict.keys())
 
-    return data
+selected_df_key = st.radio("Choose a dataframe",
+                                 dataframe_names,
+                                 index=0)
 
-#Names of important variables
-time_var = "t"
-y_var = "y"
+chosen_df = data_dict[selected_df_key]
 
-example_data = generate_data() #type: ignore
+time_var = st.selectbox("Choose the time variable",
+                           chosen_df.columns,
+                           index=0) #date
+
+y_var = st.selectbox("Choose the outcome variable (y)",
+                 chosen_df.columns,
+                 index=1) #sales
+
+#Assuming dataframe is sorted by date
+chosen_df.index = range(len(chosen_df))
 
 vars_to_plot = st.multiselect("Variables to plot",
-                 list(example_data.columns),
-               default=example_data.columns[0])
+                              list(chosen_df.columns),
+                              default=chosen_df.columns[1])
 
 for plot_var in vars_to_plot:
-    fig = plotly_time_series(example_data, time_var, plot_var)
+    fig = plotly_time_series(chosen_df, time_var, plot_var)
     st.plotly_chart(fig)
 
-last_data_point = 99
+#TODO: selection should be done with dates if dataframe has dates
+#(and indices if not    )
+last_data_point = len(chosen_df) - 1
 
-beg_pre_period = st.sidebar.slider('Beginning Pre Period', 0, last_data_point - 4, value=0)
+beg_pre_period = st.sidebar.slider('Beginning Pre Period', 0,
+     last_data_point - 4, value=0)
 end_pre_period = st.sidebar.slider(
     'End Pre Period', beg_pre_period + 1, last_data_point - 3, value=69)
 
@@ -55,7 +65,7 @@ end_eval_period = st.sidebar.slider(
 
 st.sidebar.markdown("### Select variables")
 
-x_vars = [col for col in example_data.columns if col != 'y']
+x_vars = [col for col in chosen_df.columns if col != y_var and col != time_var]
 selected_x_vars = st.sidebar.multiselect("Variable list", x_vars,
                        default=x_vars)
 
@@ -64,10 +74,10 @@ selected_x_vars = st.sidebar.multiselect("Variable list", x_vars,
 def main():
     
     if st.checkbox('Show dataframe'):
-        st.write(example_data.head(5))
+        st.write(chosen_df.head(5))
     
     if st.checkbox('Estimate Causal Impact model'):
-        ci = estimate_model(example_data, y_var,
+        ci = estimate_model(chosen_df, y_var,
                             selected_x_vars,
                             beg_pre_period, end_pre_period, beg_eval_period,
                             end_eval_period)
@@ -82,7 +92,7 @@ def main():
         top_n_vars = get_n_most_important_vars(ci, 1)
 
         y_and_top_vars = [y_var] + top_n_vars
-        fig, _ = plot_top_n_relevant_vars(example_data, time_var, y_and_top_vars,
+        fig, _ = plot_top_n_relevant_vars(chosen_df, time_var, y_and_top_vars,
                                           beg_eval_period)
         st.pyplot(fig)
 
