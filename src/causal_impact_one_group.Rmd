@@ -7,19 +7,29 @@ output:
 ---
 
 
+
 ```{r}
 library(CausalImpact)
 library(feather)
 library(ggplot2)
+library(rjson)
 
-alpha = 0.1
+parameters = fromJSON(file="example_data/parameters_for_r.json")
+alpha = parameters$alpha
+y_var = parameters$y_var
+x_vars = parameters$selected_x_vars
+time_var = parameters$time_var
+group = parameters$group
+
+#Periods (should be done with dates later?)
+beg_pre_period = parameters$beg_pre_period
+end_pre_period = parameters$end_pre_period
+beg_eval_period = parameters$beg_eval_period
+end_eval_period = parameters$end_eval_period
+
 #TODO:
-#y variable should be changeable
-#alpha should be changeable
-#x should be changeable
-#group should be changeable
+#Dates should be changeable
 
-group = "non_selectable_yet"
 data_file = "example_data/input_causal_impact_one_group.feather"
 output_file = "example_data/results_causal_impact_from_r.feather"
 
@@ -27,16 +37,18 @@ output_file = "example_data/results_causal_impact_from_r.feather"
 df_group = read.csv("example_data/input_causal_impact_one_group.csv")
 df_group$date = as.POSIXct(as.Date(df_group$date))
 
-min_date = min(df_group$date)
-max_date = max(df_group$date)
-pre_max = max(df_group[df_group$pre_period_flag==1, ]$date)
-post_min = min(df_group[df_group$pre_period_flag==0, ]$date)
+min_date = min(df_group[ , time_var])
+max_date = max(df_group[ , time_var])
+pre_max = max(df_group[df_group$pre_period_flag==1, time_var])
+post_min = min(df_group[df_group$pre_period_flag==0, time_var])
 pre.period <- as.POSIXct(c(min_date, pre_max))
 post.period <- as.POSIXct(c(post_min, max_date))
 
-x = df_group[ , grepl("x", names(df_group))]
-data = cbind(y=df_group$y, x)
-data <- zoo(data, df_group$date)
+#x = df_group[ , grepl("x", names(df_group))]
+x = df_group[ , x_vars]
+x = x[x != "pre_period_flag"]
+data = cbind(y=df_group[ , y_var], x)
+data <- zoo(data, df_group[ , time_var])
     
 impact <- CausalImpact(data, pre.period, post.period, alpha=alpha)#, model.args = list(nseason=52))
 #impact.plot <- plot(impact)

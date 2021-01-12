@@ -4,6 +4,7 @@ import numpy as np
 import streamlit as st
 import subprocess
 import pickle
+import json
 #from utils import plotly_time_series, get_n_most_important_vars
 from utils import (plotly_time_series, estimate_model,
                    get_n_most_important_vars, plot_top_n_relevant_vars)
@@ -82,6 +83,24 @@ x_vars = [col for col in chosen_df.columns if col != y_var and col != time_var]
 selected_x_vars = st.sidebar.multiselect("Variable list", x_vars,
                        default=x_vars)
 
+alpha = st.sidebar.slider("Select significance level", 0.01, 0.5, value=0.1)
+
+def send_parameters_to_r(file_name: str) -> None:
+    """
+    Collects relevant parameters and sends them to r as a json
+    """
+    parameters = {"alpha": alpha, "beg_pre_period": beg_pre_period,
+                  "end_pre_period": end_pre_period,
+                  "beg_eval_period": beg_eval_period,
+                  "end_eval_period": end_eval_period,
+                  "selected_x_vars": selected_x_vars,
+                  "y_var": y_var,
+                  "time_var": time_var,
+                  "group": selected_group
+    }
+
+    with open(file_name, "w") as outfile:
+        json.dump(parameters, outfile)
 
 
 def main():
@@ -94,7 +113,7 @@ def main():
         #df_group.to_feather(
         #    "example_data/input_causal_impact_one_group.feather", version=2)
         df_group.to_csv("example_data/input_causal_impact_one_group.csv")
-
+        send_parameters_to_r("example_data/parameters_for_r.json")
         subprocess.call(["Rscript", "causal_impact_one_group.Rmd"])
         #Bring results from R
         results_from_r = pd.read_feather(
