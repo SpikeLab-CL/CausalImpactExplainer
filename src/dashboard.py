@@ -53,7 +53,8 @@ selected_experiment = st.selectbox("Choose an experiment to evaluate",
                            experiments_to_eval,
                            index=0)
 
-df_experiment = chosen_df[chosen_df[experiment_var] == selected_experiment].copy()  
+df_experiment = chosen_df[chosen_df[experiment_var] == selected_experiment].copy() 
+df_experiment[time_var] = pd.to_datetime(df_experiment[time_var])
 df_experiment.sort_values(time_var, inplace=True)
 df_experiment.index = range(len(df_experiment))
 
@@ -61,7 +62,11 @@ vars_to_plot = st.multiselect("Variables to plot",
                               list(df_experiment.columns),
                               default=df_experiment.columns[1])
 
-def plot_vars(vars_to_plot):
+def plot_vars(vars_to_plot, beg_pre_period=None, end_pre_period=None,
+                beg_eval_period=None, end_eval_period=None):
+    """
+    TODO: plot_vars should change with the training and evaluation periods
+    """
     for plot_var in vars_to_plot:
         fig = plotly_time_series(df_experiment, time_var, plot_var)
         st.plotly_chart(fig)
@@ -69,19 +74,25 @@ def plot_vars(vars_to_plot):
 
 alpha = st.sidebar.slider("Select significance level", 0.01, 0.5, value=0.1)
 
-#TODO: selection should be done with dates if dataframe has dates (indices if not)
+#TODO: dates if dataframe has dates (indices if not)
 last_data_point = len(df_experiment) - 1
 
-beg_pre_period = st.sidebar.slider('Beginning Pre Period', 0,
-     last_data_point - 4, value=0)
+min_date = df_experiment[time_var].min().date()
+last_date = df_experiment[time_var].max().date()
+mid_point = int(len(df_experiment) / 2)
+
+
+beg_pre_period = st.sidebar.slider('Beginning Pre Period', min_date, last_date,
+                                   value=df_experiment.loc[mid_point - 1, time_var].date())
 end_pre_period = st.sidebar.slider(
-    'End Pre Period', beg_pre_period + 1, last_data_point - 3, value=69)
+    'End Pre Period', beg_pre_period, last_date, 
+                value=df_experiment.loc[mid_point + 1, time_var].date())
 
 beg_eval_period = st.sidebar.slider('Beginning Evaluation Period',
-                                    end_pre_period + 1, last_data_point - 2,
-                                    value=70)
+                                    end_pre_period, last_date,
+                                    value=df_experiment.loc[mid_point + 2, time_var].date())
 end_eval_period = st.sidebar.slider(
-    'End Evaluation Period', beg_eval_period + 1, last_data_point, value=last_data_point)
+    'End Evaluation Period', beg_eval_period, last_date, value=last_date)
 
 st.sidebar.markdown("### Select variables")
 
@@ -90,19 +101,21 @@ selected_x_vars = st.sidebar.multiselect("Variable list", x_vars,
                        default=x_vars)
 
 
-
-def send_parameters_to_r(file_name: str) -> None:
+def send_parameters_to_r(file_name: str, strftime_format="%Y-%m-%d") -> None:
     """
     Collects relevant parameters and sends them to r as a json
     """
-    parameters = {"alpha": alpha, "beg_pre_period": beg_pre_period,
-                  "end_pre_period": end_pre_period,
-                  "beg_eval_period": beg_eval_period,
-                  "end_eval_period": end_eval_period,
+    parameters = {"alpha": alpha, 
+                  "beg_pre_period": beg_pre_period.strftime(strftime_format),
+                  "end_pre_period": end_pre_period.strftime(strftime_format),
+                  "beg_eval_period": beg_eval_period.strftime(strftime_format),
+                  "end_eval_period": end_eval_period.strftime(strftime_format),
                   "selected_x_vars": selected_x_vars,
                   "y_var": y_var,
                   "time_var": time_var,
                   "experiment": selected_experiment
+
+                  
     }
 
     with open(file_name, "w") as outfile:

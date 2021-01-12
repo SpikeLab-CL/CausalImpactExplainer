@@ -7,10 +7,6 @@ output:
 ---
 
 
-```{r}
-experiment
-```
-
 
 ```{r}
 library(CausalImpact)
@@ -25,17 +21,12 @@ x_vars = parameters$selected_x_vars
 time_var = parameters$time_var
 experiment = parameters$experiment
 
-#Periods (should be done with dates later?)
-beg_pre_period = parameters$beg_pre_period
-end_pre_period = parameters$end_pre_period
-beg_eval_period = parameters$beg_eval_period
-end_eval_period = parameters$end_eval_period
+#TODO: these dates aren't used yet
+beg_pre_period = as.Date(parameters$beg_pre_period)
+end_pre_period = as.Date(parameters$end_pre_period)
+beg_eval_period = as.Date(parameters$beg_eval_period)
+end_eval_period = as.Date(parameters$end_eval_period)
 
-#TODO:
-#Dates should be changeable
-
-#data_file = "example_data/input_causal_impact_one_experiment.feather"
-#df = read_feather(data_file)
 output_file = "example_data/results_causal_impact_from_r.feather"
 
 df = read.csv("example_data/input_causal_impact_one_experiment.csv")
@@ -48,7 +39,6 @@ post_min = min(df[df$pre_period_flag==0, time_var])
 pre.period <- as.POSIXct(c(min_date, pre_max))
 post.period <- as.POSIXct(c(post_min, max_date))
 
-#x = df_group[ , grepl("x", names(df_group))]
 x = df[ , x_vars]
 x = x[x != "pre_period_flag"]
 data = cbind(y=df[ , y_var], x)

@@ -177,3 +177,5 @@ def plot_top_n_relevant_vars(df, time_var, y_and_top_vars: List[str],
         ax.axvline(beg_eval_period, c='k', linestyle='--')
 
     return fig, axes
+
+
