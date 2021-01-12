@@ -1,0 +1,54 @@
+---
+title: "Causal Impact"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+
+```{r}
+library(CausalImpact)
+library(feather)
+library(ggplot2)
+
+alpha = 0.1
+#TODO:
+#y variable should be changeable
+#alpha should be changeable
+#x should be changeable
+#group should be changeable
+
+group = "non_selectable_yet"
+data_file = "example_data/input_causal_impact_one_group.feather"
+output_file = "example_data/results_causal_impact_from_r.feather"
+
+#df_group = read_feather(data_file)
+df_group = read.csv("example_data/input_causal_impact_one_group.csv")
+df_group$date = as.POSIXct(as.Date(df_group$date))
+
+min_date = min(df_group$date)
+max_date = max(df_group$date)
+pre_max = max(df_group[df_group$pre_period_flag==1, ]$date)
+post_min = min(df_group[df_group$pre_period_flag==0, ]$date)
+pre.period <- as.POSIXct(c(min_date, pre_max))
+post.period <- as.POSIXct(c(post_min, max_date))
+
+x = df_group[ , grepl("x", names(df_group))]
+data = cbind(y=df_group$y, x)
+data <- zoo(data, df_group$date)
+    
+impact <- CausalImpact(data, pre.period, post.period, alpha=alpha)#, model.args = list(nseason=52))
+#impact.plot <- plot(impact)
+#impact.plot <- impact.plot + theme_bw(base_size = 10) +
+#             ggtitle(paste("Impact for ", group, sep=" "))
+#print(impact.plot)
+results = data.frame(impact[[1]])
+results$group = group
+results$date = df_group$date
+
+write_feather(results, output_file)
+```
+
+
+
