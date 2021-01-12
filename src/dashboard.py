@@ -6,7 +6,8 @@ import subprocess
 import pickle
 import json
 from utils import (plotly_time_series, estimate_model,
-                   get_n_most_important_vars, plot_top_n_relevant_vars)
+                   get_n_most_important_vars, plot_top_n_relevant_vars,
+                   plot_statistics)
 
 
 st.title("Causal Impact explainer")
@@ -138,6 +139,9 @@ def main():
         results_from_r = pd.read_feather(
             "example_data/results_causal_impact_from_r.feather")
         st.write(results_from_r.head(5))
+
+        fig = plot_statistics(results_from_r)
+        st.plotly_chart(fig)
 
     if st.checkbox('Estimate Causal Impact model with python'):
         #TODO: must be redone!
