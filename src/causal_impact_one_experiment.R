@@ -1,18 +1,16 @@
----
-title: "Causal Impact"
-output:
-  pdf_document: default
-  html_document:
-    df_print: paged
----
-
-
-
-```{r}
 library(CausalImpact)
 library(feather)
 library(ggplot2)
 library(rjson)
+
+options(error = function() {
+  sink(stderr())
+  on.exit(sink(NULL))
+  traceback(3, max.lines = 1L)
+  if (!interactive()) {
+    q(status = 1)
+  }
+})
 
 parameters = fromJSON(file="example_data/parameters_for_r.json")
 alpha = parameters$alpha
@@ -54,7 +52,7 @@ results$experiment_name = experiment
 results$date = df$date
 
 write_feather(results, output_file)
-```
+
 
 
 

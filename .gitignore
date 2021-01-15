@@ -7,6 +7,10 @@ __pycache__/
 
 # C extensions
 *.so
+example_data/input_causal_impact_one_experiment.csv
+example_data/input_causal_impact.feather
+example_data/parameters_for_r.json
+example_data/results_causal_impact_from_r.feather
 
 # Distribution / packaging
 .Python

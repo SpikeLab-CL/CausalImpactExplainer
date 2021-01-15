@@ -115,8 +115,7 @@ def send_parameters_to_r(file_name: str, strftime_format="%Y-%m-%d") -> None:
                   "y_var": y_var,
                   "time_var": time_var,
                   "experiment": selected_experiment
-
-                  
+          
     }
 
     with open(file_name, "w") as outfile:
@@ -133,7 +132,11 @@ def main():
         #Save and run R
         df_experiment.to_csv("example_data/input_causal_impact_one_experiment.csv")
         send_parameters_to_r("example_data/parameters_for_r.json")
-        subprocess.call(["Rscript", "causal_impact_one_experiment.Rmd"])
+        #TODO: manage errors while executing R script
+        completed = subprocess.run(["Rscript", "causal_impact_one_experiment.R"],
+                        capture_output=True)
+        st.write("Output from R (for debugging)")
+        st.write(completed)
 
         #Bring results from R
         results_from_r = pd.read_feather(
