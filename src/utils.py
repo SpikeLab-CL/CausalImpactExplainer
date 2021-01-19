@@ -6,6 +6,8 @@ import numpy as np
 from typing import List
 import streamlit as st
 import plotly.graph_objs as go
+from datetime import datetime
+COLOR_MAP = {"default": "#262730",}
 
 class myCausalImpact(CausalImpact):
     def __init__(self, data, pre_period, post_period, model=None, alpha=0.05, **kwargs):
@@ -120,17 +122,73 @@ class myCausalImpact(CausalImpact):
             fig.text(0.1, 0.01, text, fontsize='large')  # type: ignore
 
         return fig, fig.axes  # type: ignore
+def send_parameters_to_r(file_name: str, strftime_format="%Y-%m-%d") -> None:
+    """
+    Collects relevant parameters and sends them to r as a json
+    """
+    parameters = {"alpha": alpha, 
+                  "beg_pre_period": beg_pre_period.strftime(strftime_format),
+                  "end_pre_period": end_pre_period.strftime(strftime_format),
+                  "beg_eval_period": beg_eval_period.strftime(strftime_format),
+                  "end_eval_period": end_eval_period.strftime(strftime_format),
+                  "selected_x_vars": selected_x_vars,
+                  "y_var": y_var,
+                  "time_var": time_var,
+                  "experiment": selected_experiment
+            }
 
+    with open(file_name, "w") as outfile:
+        json.dump(parameters, outfile)
 
-def plotly_time_series(df, time_var, plot_var):
-    fig = px.line(df.sort_values(by=time_var),
+def plotly_time_series(df, time_var, vars_to_plot, beg_eval_period, end_eval_period):
+
+    df_toplot = df.melt(id_vars=time_var, value_vars=vars_to_plot)
+    df_toplot.sort_values(by=time_var, inplace=True)
+
+    fig = px.line(df_toplot,
                   x=time_var,
-                  y=plot_var)
+                  y='value',
+                  color='variable')
 
-    fig.update_layout(height=200,
+    max_y = df_toplot.value.max()
+    d1 = datetime(int(beg_eval_period.split('-')[0]), int(beg_eval_period.split('-')[1]), int(beg_eval_period.split('-')[2]))
+    d2 = datetime(int(end_eval_period.split('-')[0]), int(end_eval_period.split('-')[1]), int(end_eval_period.split('-')[2]))
+    fecha_media = d1 + (d2-d1)/2
+    fig.add_shape(type="rect",
+                 xref="x", yref="y",
+                 x0=beg_eval_period, y0=0,
+                 x1=end_eval_period, y1=max_y,
+                 line=dict(
+                     color="LightSeaGreen",
+                     width=3,
+                          ),
+                 fillcolor="PaleTurquoise",
+                 opacity=0.2
+                )
+
+    fig.add_annotation(dict(
+                            x=fecha_media,
+                            y=0.93*max_y,
+                            showarrow=False,
+                            text='Evaluation period',
+                            textangle=0,
+                            xref="x",
+                            yref="y", opacity=0.8
+                           ))
+
+    fig.update_layout(height=400,
                       width=800,
-                      xaxis_title="Time",
-                      yaxis_title=plot_var)
+                      xaxis_title="",
+                      yaxis_title='Value')
+
+    fig.update_layout(
+                    #showlegend=False,
+                    plot_bgcolor="white",
+                    margin=dict(t=10,l=10,b=10,r=10))
+    
+
+    #fig.update_xaxes(visible=False, fixedrange=True)
+    #fig.update_yaxes(visible=False, fixedrange=True)
 
     return fig
 
@@ -254,3 +312,56 @@ def plot_statistics(data: pd.DataFrame,
     )
 
     return fig
+
+def texto(texto : str = 'holi',
+          nfont : int = 16,
+          color : str = 'black',
+          line_height : float =None,
+          sidebar: bool = False):
+    
+    if sidebar:
+        st.sidebar.markdown(
+                body=generate_html(
+                    text=texto,
+                    color=color,
+                    font_size=f"{nfont}px",
+                    line_height=line_height
+                ),
+                unsafe_allow_html=True,
+                )
+    else:
+        st.markdown(
+        body=generate_html(
+            text=texto,
+            color=color,
+            font_size=f"{nfont}px",
+            line_height=line_height
+        ),
+        unsafe_allow_html=True,
+        )
+    
+
+def generate_html(
+    text,
+    color=COLOR_MAP["default"],
+    bold=False,
+    font_family=None,
+    font_size=None,
+    line_height=None,
+    tag="div",
+):
+    if bold:
+        text = f"<strong>{text}</strong>"
+    css_style = f"color:{color};"
+    if font_family:
+        css_style += f"font-family:{font_family};"
+    if font_size:
+        css_style += f"font-size:{font_size};"
+    if line_height:
+        css_style += f"line-height:{line_height};"
+
+    return f"<{tag} style={css_style}>{text}</{tag}>"
+
+##################################################################################################################
+####################      BORRADOR      ##########################################################################
+##################################################################################################################
