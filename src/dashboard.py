@@ -10,7 +10,8 @@ from utils import (plotly_time_series, estimate_model,
                    plot_statistics, send_parameters_to_r, texto)
 
 
-st.title("Causal Impact explainer")
+st.title("Causal Impact Explainer")
+texto('This app shows some info about jeje', nfont=11)
 
 @st.cache
 def load_example_data_dict() -> dict:
@@ -43,8 +44,13 @@ def plot_vars(df_experiment, vars_to_plot, time_var, beg_pre_period=None, end_pr
     """
     TODO: plot_vars should change with the training and evaluation periods
     """
+    for var in vars_to_plot:
+        df_experiment[f'{var}_scaled'] = (df_experiment[var] - df_experiment[var].mean())/df_experiment[var].std()
 
-    fig = plotly_time_series(df_experiment, time_var, vars_to_plot, beg_eval_period, end_eval_period)
+    scalled = st.checkbox('Plot scaled variables', value=False)
+    if scalled:
+        vars_to_plot = [f'{var}_scaled' for var in vars_to_plot]
+    fig = plotly_time_series(df_experiment, time_var, vars_to_plot, beg_pre_period, end_pre_period, beg_eval_period, end_eval_period)
     st.plotly_chart(fig)
 
 def sidebar(df_experiment : pd.DataFrame, 
@@ -52,7 +58,7 @@ def sidebar(df_experiment : pd.DataFrame,
             time_var,
             y_var):
 
-    texto('holi',
+    texto('<b> Causal Impact Explainer </b>',
           nfont=16,
           color='black',
           line_height=1,
@@ -100,25 +106,29 @@ def sidebar(df_experiment : pd.DataFrame,
 def main():
 
     chosen_df = load_feather_dataframe()
-    time_var = st.selectbox("Choose the time variable",
-                           chosen_df.columns,
-                           index=0) #date
+    col1, col2 = st.beta_columns(2)
+    with col1:
+        time_var = st.selectbox("Choose the time variable",
+                               chosen_df.columns,
+                               index=0) #date
 
-    y_var = st.selectbox("Choose the outcome variable (y)",
-                 chosen_df.columns,
-                 index=1) #sales
-
-    #Which experiment will you consider?
-    ###################################
-    experiment_var = st.selectbox("Choose the variable that identifies the individual experiments",
+        experiment_var = st.selectbox("Which variable identifies the individual experiment",
                                   chosen_df.columns,
                                   index=2)
 
-    experiments_to_eval = list(chosen_df[experiment_var].unique())
+    with col2:
 
-    selected_experiment = st.selectbox("Choose an experiment to evaluate",
-                           experiments_to_eval,
-                           index=0)
+        y_var = st.selectbox("Choose the outcome variable (y)",
+                     chosen_df.columns,
+                     index=1) #sales
+        experiments_to_eval = list(chosen_df[experiment_var].unique())
+
+        selected_experiment = st.selectbox("Choose an experiment to evaluate",
+                            experiments_to_eval,
+                            index=0)
+
+
+    
 
     df_experiment = chosen_df[chosen_df[experiment_var] == selected_experiment].copy() 
     df_experiment[time_var] = pd.to_datetime(df_experiment[time_var])
@@ -135,11 +145,14 @@ def main():
                                   default=df_experiment.columns[1])
 
         plot_vars(df_experiment, vars_to_plot, time_var, 
+                  beg_pre_period=parameters['beg_pre_period'],
+                  end_pre_period=parameters['end_pre_period'],
                   beg_eval_period=parameters['beg_eval_period'], 
-                  end_eval_period=parameters['end_eval_period'])
+                  end_eval_period=parameters['end_eval_period'],
+                  )
 
-    if st.checkbox('Show dataframe'):
-        st.write(df_experiment.head(5))
+    with st.beta_expander('Show dataframe'):
+        st.table(df_experiment.head(5))
     
     if st.checkbox("Estimate Causal Impact model with R"):
         #Save and run R

@@ -8,6 +8,10 @@ import streamlit as st
 import plotly.graph_objs as go
 from datetime import datetime
 COLOR_MAP = {"default": "#262730",}
+red = "#E07182"
+green = "#96D6B4"
+blue = "#4487D3"
+grey = "#87878A"
 
 class myCausalImpact(CausalImpact):
     def __init__(self, data, pre_period, post_period, model=None, alpha=0.05, **kwargs):
@@ -140,7 +144,7 @@ def send_parameters_to_r(file_name: str, strftime_format="%Y-%m-%d") -> None:
     with open(file_name, "w") as outfile:
         json.dump(parameters, outfile)
 
-def plotly_time_series(df, time_var, vars_to_plot, beg_eval_period, end_eval_period):
+def plotly_time_series(df, time_var, vars_to_plot, beg_pre_period, end_pre_period, beg_eval_period, end_eval_period):
 
     df_toplot = df.melt(id_vars=time_var, value_vars=vars_to_plot)
     df_toplot.sort_values(by=time_var, inplace=True)
@@ -151,13 +155,38 @@ def plotly_time_series(df, time_var, vars_to_plot, beg_eval_period, end_eval_per
                   color='variable')
 
     max_y = df_toplot.value.max()
-    d1 = datetime(int(beg_eval_period.split('-')[0]), int(beg_eval_period.split('-')[1]), int(beg_eval_period.split('-')[2]))
-    d2 = datetime(int(end_eval_period.split('-')[0]), int(end_eval_period.split('-')[1]), int(end_eval_period.split('-')[2]))
-    fecha_media = d1 + (d2-d1)/2
+    d1_eval = datetime(int(beg_eval_period.split('-')[0]), int(beg_eval_period.split('-')[1]), int(beg_eval_period.split('-')[2]))
+    d2_eval = datetime(int(end_eval_period.split('-')[0]), int(end_eval_period.split('-')[1]), int(end_eval_period.split('-')[2]))
+    fecha_media_eval = d1_eval + (d2_eval-d1_eval)/2
     fig.add_shape(type="rect",
                  xref="x", yref="y",
                  x0=beg_eval_period, y0=0,
                  x1=end_eval_period, y1=max_y,
+                 line=dict(
+                     color="#D62728",
+                     width=3,
+                          ),
+                 fillcolor=red,
+                 opacity=0.2
+                )
+
+    fig.add_annotation(dict(
+                            x=fecha_media_eval,
+                            y=0.93*max_y,
+                            showarrow=False,
+                            text='Evaluation period',
+                            textangle=0,
+                            xref="x",
+                            yref="y", opacity=0.8
+                           ))
+
+    d1_pre = datetime(int(beg_pre_period.split('-')[0]), int(beg_pre_period.split('-')[1]), int(beg_pre_period.split('-')[2]))
+    d2_pre = datetime(int(end_pre_period.split('-')[0]), int(end_pre_period.split('-')[1]), int(end_pre_period.split('-')[2]))
+    fecha_media_pre = d1_pre + (d2_pre-d1_pre)/2
+    fig.add_shape(type="rect",
+                 xref="x", yref="y",
+                 x0=beg_pre_period, y0=0,
+                 x1=end_pre_period, y1=max_y,
                  line=dict(
                      color="LightSeaGreen",
                      width=3,
@@ -167,17 +196,17 @@ def plotly_time_series(df, time_var, vars_to_plot, beg_eval_period, end_eval_per
                 )
 
     fig.add_annotation(dict(
-                            x=fecha_media,
+                            x=fecha_media_pre,
                             y=0.93*max_y,
                             showarrow=False,
-                            text='Evaluation period',
+                            text='Pre period',
                             textangle=0,
                             xref="x",
                             yref="y", opacity=0.8
                            ))
 
     fig.update_layout(height=400,
-                      width=800,
+                      width=700,
                       xaxis_title="",
                       yaxis_title='Value')
 
@@ -238,10 +267,7 @@ def plot_top_n_relevant_vars(df, time_var, y_and_top_vars: List[str],
     return fig, axes
 
 
-red = "#E07182"
-green = "#96D6B4"
-blue = "#4487D3"
-grey = "#87878A"
+
 
 
 def plot_statistics(data: pd.DataFrame,
@@ -313,7 +339,7 @@ def plot_statistics(data: pd.DataFrame,
 
     return fig
 
-def texto(texto : str = 'holi',
+def texto(texto : str = 'jeje',
           nfont : int = 16,
           color : str = 'black',
           line_height : float =None,
