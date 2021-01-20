@@ -8,7 +8,7 @@ import json
 from utils import (plotly_time_series, estimate_model,
                    get_n_most_important_vars, plot_top_n_relevant_vars,
                    plot_statistics, send_parameters_to_r, texto,
-                   plot_logo_spike)
+                   plot_logo_spike, max_width_)
 
 
 st.title("Causal Impact Explainer :volcano:")
@@ -118,7 +118,7 @@ def sidebar(df_experiment : pd.DataFrame,
 
 
 def main():
-
+    max_width_(width=1000)
     chosen_df = load_feather_dataframe()
     col1, col2 = st.beta_columns(2)
     with col1:
@@ -170,7 +170,7 @@ def main():
         send_parameters_to_r("example_data/parameters_for_r.json", parameters, selected_experiment)
         #TODO: manage errors while executing R script
         completed = subprocess.run(["Rscript", "causal_impact_one_experiment.R"],
-                        capture_output=True)
+                        )
         st.write("Output from R (for debugging)")
         st.write(completed)
 

@@ -200,7 +200,7 @@ def plotly_time_series(df, time_var, vars_to_plot, beg_pre_period, end_pre_perio
                            ))
 
     fig.update_layout(height=400,
-                      width=700,
+                      width=950,
                       xaxis_title="",
                       yaxis_title='Value')
 
