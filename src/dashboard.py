@@ -7,12 +7,13 @@ import pickle
 import json
 from utils import (plotly_time_series, estimate_model,
                    get_n_most_important_vars, plot_top_n_relevant_vars,
-                   plot_statistics, send_parameters_to_r, texto)
+                   plot_statistics, send_parameters_to_r, texto,
+                   plot_logo_spike)
 
 
-st.title("Causal Impact Explainer")
-texto('This app shows some info about jeje', nfont=11)
-
+st.title("Causal Impact Explainer :volcano:")
+texto('This app shows some info about jeje', nfont=17)
+texto('Chose the parameters for finding ')
 @st.cache
 def load_example_data_dict() -> dict:
     with open("example_data/tablitas.pickle", 'rb') as file:
@@ -50,20 +51,31 @@ def plot_vars(df_experiment, vars_to_plot, time_var, beg_pre_period=None, end_pr
     scalled = st.checkbox('Plot scaled variables', value=False)
     if scalled:
         vars_to_plot = [f'{var}_scaled' for var in vars_to_plot]
-    fig = plotly_time_series(df_experiment, time_var, vars_to_plot, beg_pre_period, end_pre_period, beg_eval_period, end_eval_period)
-    st.plotly_chart(fig)
+    plotly_time_series(df_experiment, time_var, vars_to_plot, beg_pre_period, end_pre_period, beg_eval_period, end_eval_period)
+    
 
 def sidebar(df_experiment : pd.DataFrame, 
             chosen_df : pd.DataFrame,
             time_var,
             y_var):
 
+    texto('LOGO',50, sidebar=True)
+
     texto('<b> Causal Impact Explainer </b>',
           nfont=16,
           color='black',
           line_height=1,
           sidebar=True)
-    alpha = st.sidebar.slider("Select significance level", 0.01, 0.5, value=0.1)
+
+    st.sidebar.markdown("#### Select variables of studing")
+
+    x_vars = [col for col in chosen_df.columns if col != y_var and col != time_var and col!='group']
+    selected_x_vars = st.sidebar.multiselect("Better less than more", x_vars,
+                        default=x_vars)
+
+    st.sidebar.markdown("#### Experiment setting")
+    #alpha = st.sidebar.slider("Significance level", 0.01, 0.5, value=0.1)
+    alpha = st.sidebar.number_input("Significance level", 0.01, 0.5, value=0.1, step=0.01)
 
     #TODO: dates if dataframe has dates (indices if not)
     last_data_point = len(df_experiment) - 1
@@ -73,22 +85,24 @@ def sidebar(df_experiment : pd.DataFrame,
     mid_point = int(len(df_experiment) / 2)
 
 
-    beg_pre_period = st.sidebar.slider('Beginning Pre Period', min_date, last_date,
-                                   value=df_experiment.loc[mid_point - 1, time_var].date())
-    end_pre_period = st.sidebar.slider('End Pre Period', beg_pre_period, last_date, 
-                                     value=df_experiment.loc[mid_point + 1, time_var].date())
+    beg_pre_period, end_pre_period = st.sidebar.slider('Beginning and end pre period', min_date, last_date,
+                                   value=(df_experiment.loc[mid_point - 150, time_var].date(),df_experiment.loc[mid_point + 1, time_var].date()))
 
-    beg_eval_period = st.sidebar.slider('Beginning Evaluation Period',
+    beg_eval_period, end_eval_period = st.sidebar.slider('Beginning and end evaluation period',
                                         end_pre_period, last_date,
-                                        value=df_experiment.loc[mid_point + 2, time_var].date())
-    end_eval_period = st.sidebar.slider('End Evaluation Period', 
-                                        beg_eval_period, last_date, value=last_date)
+                                        value=(df_experiment.loc[mid_point + 20, time_var].date(),last_date))
+#    beg_pre_period = st.sidebar.slider('Beginning Pre Period', min_date, last_date,
+#                                   value=df_experiment.loc[mid_point - 150, time_var].date())
+#    end_pre_period = st.sidebar.slider('End Pre Period', beg_pre_period, last_date, 
+#                                     value=df_experiment.loc[mid_point + 1, time_var].date())
+#
+#    beg_eval_period = st.sidebar.slider('Beginning Evaluation Period',
+#                                        end_pre_period, last_date,
+#                                        value=df_experiment.loc[mid_point + 20, time_var].date())
+#    end_eval_period = st.sidebar.slider('End Evaluation Period', 
+#                                        beg_eval_period, last_date, value=last_date)
 
-    st.sidebar.markdown("### Select variables")
-
-    x_vars = [col for col in chosen_df.columns if col != y_var and col != time_var]
-    selected_x_vars = st.sidebar.multiselect("Variable list", x_vars,
-                        default=x_vars)
+    
     strftime_format="%Y-%m-%d"
     parameters = {"alpha": alpha, 
                   "beg_pre_period": beg_pre_period.strftime(strftime_format),
@@ -98,8 +112,8 @@ def sidebar(df_experiment : pd.DataFrame,
                   "selected_x_vars": selected_x_vars,
                   "y_var": y_var,
                   "time_var": time_var,
-                  #"experiment": selected_experiment
-            }
+                 }
+    plot_logo_spike()
     return parameters
 
 
@@ -128,16 +142,12 @@ def main():
                             index=0)
 
 
-    
-
     df_experiment = chosen_df[chosen_df[experiment_var] == selected_experiment].copy() 
     df_experiment[time_var] = pd.to_datetime(df_experiment[time_var])
     df_experiment.sort_values(time_var, inplace=True)
     df_experiment.index = range(len(df_experiment))
 
     parameters = sidebar(df_experiment, chosen_df, time_var, y_var)
-
-    st.markdown('---')
 
     with st.beta_expander('Ploting variables'):
         vars_to_plot = st.multiselect("Variables to plot",
@@ -154,10 +164,10 @@ def main():
     with st.beta_expander('Show dataframe'):
         st.table(df_experiment.head(5))
     
-    if st.checkbox("Estimate Causal Impact model with R"):
+    with st.beta_expander("Estimate Causal Impact model with R"):
         #Save and run R
         df_experiment.to_csv("example_data/input_causal_impact_one_experiment.csv")
-        send_parameters_to_r("example_data/parameters_for_r.json")
+        send_parameters_to_r("example_data/parameters_for_r.json", parameters, selected_experiment)
         #TODO: manage errors while executing R script
         completed = subprocess.run(["Rscript", "causal_impact_one_experiment.R"],
                         capture_output=True)
@@ -172,25 +182,25 @@ def main():
         fig = plot_statistics(results_from_r)
         st.plotly_chart(fig)
 
-    if st.checkbox('Estimate Causal Impact model with python'):
-        #TODO: must be redone!
-        ci = estimate_model(chosen_df, y_var,
-                            selected_x_vars,
-                            beg_pre_period, end_pre_period, beg_eval_period,
-                            end_eval_period)
-        fig, _ = ci.plot()
-        st.pyplot(fig)
-        st.text(ci.summary())
-
-        #st.text(ci.summary('report'))
-
-        st.markdown("### Most important variables (according to coefficients)")
-
-        top_n_vars = get_n_most_important_vars(ci, 1)
-
-        y_and_top_vars = [y_var] + top_n_vars
-        fig, _ = plot_top_n_relevant_vars(chosen_df, time_var, y_and_top_vars,
-                                          beg_eval_period)
-        st.pyplot(fig)
+#    if st.checkbox('Estimate Causal Impact model with python'):
+#        #TODO: must be redone!
+#        ci = estimate_model(chosen_df, y_var,
+#                            selected_x_vars,
+#                            beg_pre_period, end_pre_period, beg_eval_period,
+#                            end_eval_period)
+#        fig, _ = ci.plot()
+#        st.pyplot(fig)
+#        st.text(ci.summary())
+#
+#        #st.text(ci.summary('report'))
+#
+#        st.markdown("### Most important variables (according to coefficients)")
+#
+#        top_n_vars = get_n_most_important_vars(ci, 1)
+#
+#        y_and_top_vars = [y_var] + top_n_vars
+#        fig, _ = plot_top_n_relevant_vars(chosen_df, time_var, y_and_top_vars,
+#                                          beg_eval_period)
+#        st.pyplot(fig)
 
 main()

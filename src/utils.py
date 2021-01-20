@@ -7,6 +7,8 @@ from typing import List
 import streamlit as st
 import plotly.graph_objs as go
 from datetime import datetime
+import json
+
 COLOR_MAP = {"default": "#262730",}
 red = "#E07182"
 green = "#96D6B4"
@@ -126,20 +128,11 @@ class myCausalImpact(CausalImpact):
             fig.text(0.1, 0.01, text, fontsize='large')  # type: ignore
 
         return fig, fig.axes  # type: ignore
-def send_parameters_to_r(file_name: str, strftime_format="%Y-%m-%d") -> None:
+def send_parameters_to_r(file_name: str, parameters: dict, selected_experiment: str) -> None:
     """
     Collects relevant parameters and sends them to r as a json
     """
-    parameters = {"alpha": alpha, 
-                  "beg_pre_period": beg_pre_period.strftime(strftime_format),
-                  "end_pre_period": end_pre_period.strftime(strftime_format),
-                  "beg_eval_period": beg_eval_period.strftime(strftime_format),
-                  "end_eval_period": end_eval_period.strftime(strftime_format),
-                  "selected_x_vars": selected_x_vars,
-                  "y_var": y_var,
-                  "time_var": time_var,
-                  "experiment": selected_experiment
-            }
+    parameters["experiment"] = selected_experiment
 
     with open(file_name, "w") as outfile:
         json.dump(parameters, outfile)
@@ -155,12 +148,13 @@ def plotly_time_series(df, time_var, vars_to_plot, beg_pre_period, end_pre_perio
                   color='variable')
 
     max_y = df_toplot.value.max()
+    min_y = df_toplot.value.min()
     d1_eval = datetime(int(beg_eval_period.split('-')[0]), int(beg_eval_period.split('-')[1]), int(beg_eval_period.split('-')[2]))
     d2_eval = datetime(int(end_eval_period.split('-')[0]), int(end_eval_period.split('-')[1]), int(end_eval_period.split('-')[2]))
     fecha_media_eval = d1_eval + (d2_eval-d1_eval)/2
     fig.add_shape(type="rect",
                  xref="x", yref="y",
-                 x0=beg_eval_period, y0=0,
+                 x0=beg_eval_period, y0=min_y,
                  x1=end_eval_period, y1=max_y,
                  line=dict(
                      color="#D62728",
@@ -185,7 +179,7 @@ def plotly_time_series(df, time_var, vars_to_plot, beg_pre_period, end_pre_perio
     fecha_media_pre = d1_pre + (d2_pre-d1_pre)/2
     fig.add_shape(type="rect",
                  xref="x", yref="y",
-                 x0=beg_pre_period, y0=0,
+                 x0=beg_pre_period, y0=min_y,
                  x1=end_pre_period, y1=max_y,
                  line=dict(
                      color="LightSeaGreen",
@@ -215,11 +209,14 @@ def plotly_time_series(df, time_var, vars_to_plot, beg_pre_period, end_pre_perio
                     plot_bgcolor="white",
                     margin=dict(t=10,l=10,b=10,r=10))
     
-
+    
     #fig.update_xaxes(visible=False, fixedrange=True)
     #fig.update_yaxes(visible=False, fixedrange=True)
-
-    return fig
+    st.plotly_chart(fig)
+    texto('<b>Pre period </b> corresponds to')
+    texto('<b>Evaluation period </b> corresponds to')
+    texto(' ')
+    #return fig
 
 #Not sure if this speeds up anything
 @st.cache(hash_funcs={myCausalImpact: id})
@@ -388,6 +385,30 @@ def generate_html(
 
     return f"<{tag} style={css_style}>{text}</{tag}>"
 
+
+def max_width_(width=1000):
+    max_width_str = f"max-width: {width}px;"
+    st.markdown(
+        f"""
+    <style>
+    .reportview-container .main .block-container{{
+        {max_width_str}
+    }}
+    </style>    
+    """,
+        unsafe_allow_html=True,
+    )
+
+def plot_logo_spike():
+    st.sidebar.markdown(
+        "<br>"
+        '<div style="text-align: center;">'
+        '<a href="http://www.spikelab.xyz/"> '
+        '<img src="https://raw.githubusercontent.com/SpikeLab-CL/calidad_aire_2050_cr2/master/logo/logo_con_caption.png" width=150>'
+        " </img>"
+        "</a> </div>",
+        unsafe_allow_html=True,
+    )
 ##################################################################################################################
 ####################      BORRADOR      ##########################################################################
 ##################################################################################################################
