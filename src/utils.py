@@ -128,6 +128,8 @@ class myCausalImpact(CausalImpact):
             fig.text(0.1, 0.01, text, fontsize='large')  # type: ignore
 
         return fig, fig.axes  # type: ignore
+
+
 def send_parameters_to_r(file_name: str, parameters: dict, selected_experiment: str) -> None:
     """
     Collects relevant parameters and sends them to r as a json
@@ -136,6 +138,7 @@ def send_parameters_to_r(file_name: str, parameters: dict, selected_experiment: 
 
     with open(file_name, "w") as outfile:
         json.dump(parameters, outfile)
+
 
 def plotly_time_series(df, time_var, vars_to_plot, beg_pre_period, end_pre_period, beg_eval_period, end_eval_period):
 
@@ -213,8 +216,11 @@ def plotly_time_series(df, time_var, vars_to_plot, beg_pre_period, end_pre_perio
     #fig.update_xaxes(visible=False, fixedrange=True)
     #fig.update_yaxes(visible=False, fixedrange=True)
     st.plotly_chart(fig)
-    texto('<b>Pre period </b> corresponds to')
-    texto('<b>Evaluation period </b> corresponds to')
+    texto('<b>Pre period </b> the model uses this period to learn patterns', nfont=14,
+    color="grey")
+    texto("""<b>Evaluation period </b> the model uses this period to evaluate the 
+    intervention. It doesn't use it for training""", nfont=14,
+    color="grey")
     texto(' ')
     #return fig
 
@@ -264,15 +270,11 @@ def plot_top_n_relevant_vars(df, time_var, y_and_top_vars: List[str],
     return fig, axes
 
 
-
-
-
-def plot_statistics(data: pd.DataFrame,
-                   lower_col="cum.effect.lower", upper_col='cum.effect.upper',
-                    mean_col='cum.effect',
+def plot_statistics(data, lower_col="cum.effect.lower",
+             upper_col='cum.effect.upper', mean_col='cum.effect',
                     index_col="date", dashed_col=None, show_legend=False,
-                    xaxis_title='Date', yaxis_title='Sales', title=None, name='Mean effect'):
-
+                    xaxis_title='Date', yaxis_title='Sales', title=None,
+                     name='Mean effect'):
     color_lower_upper_marker = "#C7405A"
     color_fillbetween = 'rgba(88, 44, 51, 0.3)'
     color_lower_upper_marker = color_fillbetween  # "#C7405A"
@@ -285,9 +287,7 @@ def plot_statistics(data: pd.DataFrame,
             mode='lines',
             line=dict(color=color_median),
             showlegend=show_legend,
-
         ),
-
         go.Scatter(
             name=f'Upper effect',
             x=data[index_col],
@@ -309,7 +309,6 @@ def plot_statistics(data: pd.DataFrame,
             showlegend=False
         )
     ]
-
     if dashed_col is not None:
         dashed_fig = go.Scatter(
             name='Actual',
@@ -320,12 +319,11 @@ def plot_statistics(data: pd.DataFrame,
             showlegend=show_legend,
         )
         fig_list = [dashed_fig] + fig_list
-
     fig = go.Figure(fig_list)
-
     fig.update_layout(
         yaxis=dict(title=yaxis_title, showgrid=False),
         xaxis=dict(title=xaxis_title, showgrid=False),
+        height=400, width=950,
         title=title,
         hovermode="x",
         paper_bgcolor='white',
@@ -335,6 +333,9 @@ def plot_statistics(data: pd.DataFrame,
     )
 
     return fig
+
+
+
 
 def texto(texto : str = 'jeje',
           nfont : int = 16,
