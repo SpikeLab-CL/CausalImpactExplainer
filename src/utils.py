@@ -273,7 +273,7 @@ def plot_top_n_relevant_vars(df, time_var, y_and_top_vars: List[str],
 def plot_statistics(data, lower_col="cum.effect.lower",
              upper_col='cum.effect.upper', mean_col='cum.effect',
                     index_col="date", dashed_col=None, show_legend=False,
-                    xaxis_title='Date', yaxis_title='Sales', title=None,
+                    xaxis_title='Date', yaxis_title='Value', title=None,
                      name='Mean effect'):
     color_lower_upper_marker = "#C7405A"
     color_fillbetween = 'rgba(88, 44, 51, 0.3)'

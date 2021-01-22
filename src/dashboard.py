@@ -3,43 +3,23 @@ import pandas as pd
 import numpy as np
 import streamlit as st
 import subprocess
-import pickle
-import json
 from PIL import Image
 from utils import (plotly_time_series, estimate_model,
                    get_n_most_important_vars, plot_top_n_relevant_vars,
-                   plot_statistics, send_parameters_to_r, texto,
-                   plot_logo_spike, max_width_)
+                   plot_statistics, send_parameters_to_r, texto, max_width_)
 
 
 st.title("Causal Impact Explainer :volcano:")
 texto("""This dashboard can help you explore various Causal Impact packages""",
    nfont=17)
 texto('Choose the following parameters ')
-@st.cache
-def load_example_data_dict() -> dict:
-    with open("example_data/tablitas.pickle", 'rb') as file:
-        data_dict = pickle.load(file)
-    for key, df in data_dict.items():
-        data_dict[key] = df.sort_values(by="date").loc[1::, :]
-    return data_dict
-
-#data_dict = load_example_data_dict()
-#dataframe_names = list(data_dict.keys())
-
-#selected_df_key = st.radio("Choose a dataframe",
-#                                dataframe_names,
-#                                 index=0)
-
-#chosen_df = data_dict[selected_df_key]
 
 @st.cache
-def load_feather_dataframe() -> pd.DataFrame:
-    df = pd.read_feather("example_data/input_causal_impact.feather")
-    df['date'] = df.date.dt.strftime('%Y-%m-%d')
-    df['date'] = pd.to_datetime(df['date'], utc=True)
+def load_dataframe() -> pd.DataFrame:
+    #file = st.file_uploader("I'm a file uploader")
+    #Emission scandal breaks out on 18th of September 2015
+    df = pd.read_feather("example_data/volks_data_clean.feather")
     return df
-
 
 
 def plot_vars(df_experiment, vars_to_plot, time_var, beg_pre_period=None, end_pre_period=None,
@@ -74,9 +54,7 @@ def sidebar(df_experiment : pd.DataFrame,
     #alpha = st.sidebar.slider("Significance level", 0.01, 0.5, value=0.1)
     alpha = st.sidebar.number_input("Significance level", 0.01, 0.5, value=0.1, step=0.01)
 
-    #TODO: dates if dataframe has dates (indices if not)
-    last_data_point = len(df_experiment) - 1
-
+    #TODO: indices dataframe doesn't have dates
     min_date = df_experiment[time_var].min().date()
     last_date = df_experiment[time_var].max().date()
     mid_point = int(len(df_experiment) / 2)
@@ -90,7 +68,8 @@ def sidebar(df_experiment : pd.DataFrame,
     st.sidebar.markdown("### Beginning and end evaluation period")
     beg_eval_period, end_eval_period = st.sidebar.slider('',
                                         end_pre_period, last_date,
-                                        value=(df_experiment.loc[mid_point + 20, time_var].date(),last_date))
+                                        value=(df_experiment.loc[mid_point + 20, time_var].date(),
+                                        last_date))
     
     strftime_format="%Y-%m-%d"
     parameters = {"alpha": alpha, 
@@ -108,7 +87,7 @@ def sidebar(df_experiment : pd.DataFrame,
 
 def main():
     max_width_(width=1000)
-    chosen_df = load_feather_dataframe()
+    chosen_df = load_dataframe()
     col1, col2 = st.beta_columns(2)
     with col1:
         time_var = st.selectbox("Choose the time variable",
@@ -130,8 +109,8 @@ def main():
                             experiments_to_eval,
                             index=0)
 
-
-    df_experiment = chosen_df[chosen_df[experiment_var] == selected_experiment].copy() 
+    #TODO: make it optional to choose experiment groups
+    df_experiment = chosen_df[chosen_df[experiment_var] == selected_experiment].copy()
     df_experiment[time_var] = pd.to_datetime(df_experiment[time_var])
     df_experiment.sort_values(time_var, inplace=True)
     df_experiment.index = range(len(df_experiment))
@@ -160,16 +139,17 @@ def main():
             send_parameters_to_r("example_data/parameters_for_r.json", parameters, selected_experiment)
             #TODO: manage errors while executing R script
             completed = subprocess.run(["Rscript", "causal_impact_one_experiment.R"],
-                            )
-            st.write("Output from R (for debugging)")
-            st.write(completed)
+                            capture_output=True)
+            if st.checkbox("Show output from R (for debugging)"):
+                st.write(completed)
 
             #Bring results from R
             results_from_r = pd.read_feather(
                 "example_data/results_causal_impact_from_r.feather")
-            st.write(results_from_r.head(5))
+            if st.checkbox("Show results dataframe"):
+                st.write(results_from_r.head(5))
 
-            fig = plot_statistics(results_from_r)
+            fig = plot_statistics(results_from_r, index_col=parameters["time_var"])
             st.plotly_chart(fig)
 
     with st.beta_expander('Estimate Causal Impact model with python'):

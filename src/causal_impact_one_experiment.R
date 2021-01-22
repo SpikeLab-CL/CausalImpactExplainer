@@ -28,28 +28,24 @@ end_eval_period = as.Date(parameters$end_eval_period)
 output_file = "example_data/results_causal_impact_from_r.feather"
 
 df = read.csv("example_data/input_causal_impact_one_experiment.csv")
-df$date = as.POSIXct(as.Date(df$date))
+df[ , time_var] = as.POSIXct(as.Date(df[ , time_var]))
 
-min_date = min(df[ , time_var])
-max_date = max(df[ , time_var])
-pre_max = max(df[df$pre_period_flag==1, time_var])
-post_min = min(df[df$pre_period_flag==0, time_var])
-pre.period <- as.POSIXct(c(min_date, pre_max))
-post.period <- as.POSIXct(c(post_min, max_date))
+pre.period <- as.POSIXct(c(beg_pre_period, end_pre_period))
+post.period <- as.POSIXct(c(beg_eval_period, end_eval_period))
 
 x = df[ , x_vars]
-x = x[x != "pre_period_flag"]
 data = cbind(y=df[ , y_var], x)
 data <- zoo(data, df[ , time_var])
     
-impact <- CausalImpact(data, pre.period, post.period, alpha=alpha)#, model.args = list(nseason=52))
+impact <- CausalImpact(data, pre.period, post.period, alpha=alpha)
+#, model.args = list(nseason=52))
 #impact.plot <- plot(impact)
 #impact.plot <- impact.plot + theme_bw(base_size = 10) +
 #             ggtitle(paste("Impact for ", group, sep=" "))
 #print(impact.plot)
 results = data.frame(impact[[1]])
 results$experiment_name = experiment
-results$date = df$date
+results[ , time_var] = df[ , time_var]
 
 write_feather(results, output_file)
 
